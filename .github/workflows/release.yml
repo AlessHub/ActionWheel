@@ -44,6 +44,7 @@ jobs:
             Get-ChildItem "ActionWheel/bin" -Recurse -Directory | Select-Object -ExpandProperty FullName
             exit 1
           }
+          Copy-Item "ActionWheel/ActionWheel.json" -Destination $outDir -Force
           Compress-Archive -Path "$outDir/*" -DestinationPath "latest.zip"
 
       - name: Create release

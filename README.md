@@ -19,13 +19,6 @@ A [Dalamud](https://github.com/goatcorp/Dalamud) plugin for Final Fantasy XIV th
 3. Add emote pages and assign emotes to slots
 4. In game, hold the toggle key — the wheel appears. Hover a segment and release to use that emote
 
-## Building
-
-```
-dotnet build "ActionWheel.sln"
-```
-
-Requires the [Dalamud.NET.Sdk](https://github.com/goatcorp/Dalamud.NET.Sdk) NuGet package (restored automatically).
 
 ## License
 

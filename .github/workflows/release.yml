@@ -38,14 +38,13 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          $outDir = "ActionWheel/bin/x64/Release/ActionWheel"
-          if (-not (Test-Path $outDir)) {
-            Write-Error "Build output not found at $outDir"
-            Get-ChildItem "ActionWheel/bin" -Recurse -Directory | Select-Object -ExpandProperty FullName
+          $sdkZip = "ActionWheel/bin/x64/Release/ActionWheel/latest.zip"
+          if (-not (Test-Path $sdkZip)) {
+            Write-Error "SDK zip not found. Contents of bin:"
+            Get-ChildItem "ActionWheel/bin" -Recurse -File | Select-Object -ExpandProperty FullName
             exit 1
           }
-          Copy-Item "ActionWheel/ActionWheel.json" -Destination $outDir -Force
-          Compress-Archive -Path "$outDir/*" -DestinationPath "latest.zip"
+          Copy-Item $sdkZip -Destination "latest.zip"
 
       - name: Create release
         uses: softprops/action-gh-release@v2

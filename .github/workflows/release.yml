@@ -72,3 +72,18 @@ jobs:
             git commit -m "ci: update repo.json for v${{ steps.version.outputs.version }} [skip ci]"
             git push
           }
+
+      - name: Notify aggregator
+        shell: pwsh
+        env:
+          AGGREGATOR_PAT: ${{ secrets.AGGREGATOR_PAT }}
+        run: |
+          $body = @{ event_type = "plugin-released"; client_payload = @{ plugin = "ActionWheel" } } | ConvertTo-Json
+          Invoke-RestMethod -Method Post `
+            -Uri "https://api.github.com/repos/AlessHub/DalamudPlugins/dispatches" `
+            -Headers @{
+              "Authorization" = "Bearer $env:AGGREGATOR_PAT"
+              "Accept"        = "application/vnd.github+json"
+            } `
+            -Body $body `
+            -ContentType "application/json"

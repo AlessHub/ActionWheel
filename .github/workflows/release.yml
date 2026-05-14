@@ -24,6 +24,14 @@ jobs:
           $version = ($xml.Project.PropertyGroup | Where-Object { $_.Version } | Select-Object -First 1).Version
           "version=$version" >> $env:GITHUB_OUTPUT
 
+      - name: Download Dalamud
+        shell: pwsh
+        run: |
+          $dest = "$env:APPDATA\XIVLauncher\addon\Hooks\dev"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Invoke-WebRequest -Uri "https://goatcorp.github.io/dalamud-distrib/latest.zip" -OutFile "$env:TEMP\dalamud.zip"
+          Expand-Archive -Path "$env:TEMP\dalamud.zip" -DestinationPath $dest -Force
+
       - name: Build
         run: dotnet build ActionWheel.sln --configuration Release -p:Platform=x64
 

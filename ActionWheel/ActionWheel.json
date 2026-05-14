@@ -1,0 +1,13 @@
+{
+  "Name": "Action Wheel",
+  "Author": "Aless",
+  "Punchline": "A radial wheel for quickly using actions in FFXIV.",
+  "Description": "Adds a customisable radial wheel to Final Fantasy XIV. Assign emotes or macros to slots, organise them across multiple pages, bind a key to open the wheel, and execute them with a single click. Supports per-character and per-page colour theming.",
+  "RepoUrl": "https://github.com/AlessHub/ActionWheel",
+  "ApplicableVersion": "any",
+  "Tags": ["Emote", "Social"],
+  "CategoryTags": [],
+  "DalamudApiLevel": 15,
+  "IconUrl": "",
+  "ImageUrls": []
+}

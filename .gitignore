@@ -1,0 +1,26 @@
+## Dalamud Plugin .gitignore
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userprefs
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+packages/
+nuget.config
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dalamud dev environment
+/devDalamud/

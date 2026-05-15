@@ -654,7 +654,7 @@ public class ConfigWindow : Window, IDisposable
                 int        slotIdx = baseSlot + i + 1;
                 EmoteInfo? emote   = ResolveSlot(slots, slotIdx);
                 var        pos     = center + new Vector2(MathF.Cos(mid) * labelR, MathF.Sin(mid) * labelR);
-                uint       txtCol  = hov ? WheelCol(255, 245, 180, 255) : WheelCol(210, 220, 235, 200);
+                uint       txtCol  = hov ? WheelCol(255, 245, 180, 255) : WheelColV(charCfg.GetPageTextColor(page) ?? globalTextColor);
                 var        tex     = emote != null ? Plugin.GetIcon(emote.IconId) : null;
 
                 if (tex != null)
@@ -691,7 +691,7 @@ public class ConfigWindow : Window, IDisposable
 
             if (centerEmote != null)
             {
-                uint ctxtCol = hovCen ? WheelCol(255, 245, 180, 255) : WheelCol(210, 220, 235, 200);
+                uint ctxtCol = hovCen ? WheelCol(255, 245, 180, 255) : WheelColV(charCfg.GetPageTextColor(page) ?? globalTextColor);
                 var  cTex    = Plugin.GetIcon(centerEmote.IconId);
                 if (cTex != null)
                 {

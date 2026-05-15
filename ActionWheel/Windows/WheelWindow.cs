@@ -41,6 +41,7 @@ public class WheelWindow : Window, IDisposable
             ImGuiWindowFlags.NoCollapse      |
             ImGuiWindowFlags.NoBackground    |
             ImGuiWindowFlags.NoMove          |
+            ImGuiWindowFlags.NoResize        |
             ImGuiWindowFlags.NoSavedSettings |
             ImGuiWindowFlags.NoNav           |
             ImGuiWindowFlags.NoFocusOnAppearing)

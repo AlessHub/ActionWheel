@@ -49,7 +49,13 @@ public class EmoteService
                 emoteCache.Add(new EmoteInfo(row.RowId, name, (uint)row.UnlockLink, iconId, textCmd, category));
             }
 
-            emoteCache = emoteCache.OrderBy(e => e.Name).ToList();
+            // Remove emotes with no usable text command, then deduplicate by command.
+            emoteCache = emoteCache
+                .Where(e => !string.IsNullOrWhiteSpace(e.TextCommand))
+                .GroupBy(e => e.TextCommand, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .OrderBy(e => e.Name)
+                .ToList();
             _byIdCache = new Dictionary<uint, EmoteInfo>(emoteCache.Count);
             foreach (var e in emoteCache) _byIdCache[e.RowId] = e;
         }

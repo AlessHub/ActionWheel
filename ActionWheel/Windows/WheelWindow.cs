@@ -36,10 +36,8 @@ public class WheelWindow : Window, IDisposable
     public bool HoveredCenter { get; private set; } = false;
 
     public WheelWindow(Plugin plugin)
-        : base("##WheelEmoteRadial",
+        : base("##ActionWheelRadial",
             ImGuiWindowFlags.NoTitleBar      |
-            ImGuiWindowFlags.NoResize        |
-            ImGuiWindowFlags.NoScrollbar     |
             ImGuiWindowFlags.NoCollapse      |
             ImGuiWindowFlags.NoBackground    |
             ImGuiWindowFlags.NoMove          |
@@ -251,7 +249,7 @@ public class WheelWindow : Window, IDisposable
         }
 
         bool cHov  = HoveredCenter;
-        uint cFill = cHov ? ColV(cfg.WheelHoverColor) : Col(15, 20, 25, 230);
+        uint cFill = cHov ? ColV(pageHoverColor) : Col(15, 20, 25, 230);
         dl.AddCircleFilled(center, InnerRadius,       cFill,                   32);
         dl.AddCircle(      center, InnerRadius,       Col( 80, 110, 140, 200), 32, 1.5f);
         dl.AddCircle(      center, OuterRadius + 10f, Col( 80, 110, 140, 120), 64, 1.5f);

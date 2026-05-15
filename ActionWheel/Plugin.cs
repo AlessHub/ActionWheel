@@ -12,6 +12,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.System.String;
 using FFXIVClientStructs.FFXIV.Client.UI;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Client.UI.Shell;
 using ActionWheel.Services;
 using ActionWheel.Windows;
@@ -164,7 +165,9 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnCharacterLoaded(string key)
     {
-        if (!Configuration.CharacterConfigs.ContainsKey(key))
+        bool isNew = !Configuration.CharacterConfigs.ContainsKey(key);
+
+        if (isNew)
         {
             if (Configuration.WheelEmoteIds.Count > 0 ||
                 Configuration.ChatLogEmotes.Count  > 0 ||
@@ -187,7 +190,49 @@ public sealed class Plugin : IDalamudPlugin
                 Log.Information($"WheelEmote: migrated legacy config to character '{key}'.");
             }
         }
+
+        // On first login for this character, auto-import any emotes the player
+        // already has starred in the game's own Emote List.
+        var charCfg = Configuration.GetCharacterConfig(key);
+        if (isNew && (charCfg.FavoriteEmotes == null || charCfg.FavoriteEmotes.Count == 0))
+        {
+            var imported = ImportGameFavorites();
+            if (imported > 0)
+                Log.Information($"WheelEmote: imported {imported} game favorites for '{key}'.");
+        }
+
         ConfigWindow.InvalidateEmoteCache();
+    }
+
+    /// <summary>
+    /// Reads the emote IDs the player has starred in the game's Emote List and
+    /// merges them into the current character's plugin favorites.
+    /// Returns the number of newly-added favorites.
+    /// </summary>
+    public unsafe int ImportGameFavorites()
+    {
+        try
+        {
+            var module = EmoteHistoryModule.Instance();
+            if (module == null) return 0;
+
+            var charCfg = ActiveCharConfig;
+            charCfg.FavoriteEmotes ??= new HashSet<uint>();
+            int added = 0;
+            for (int i = 0; i < 20; i++)
+            {
+                ushort id = module->Favorites[i];
+                if (id != 0 && charCfg.FavoriteEmotes.Add((uint)id))
+                    added++;
+            }
+            if (added > 0) Configuration.Save();
+            return added;
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "Failed to read game emote favorites");
+            return 0;
+        }
     }
 
     private bool _keybindWasPressed = false;

@@ -53,9 +53,8 @@ public class ConfigWindow : Window, IDisposable
     ];
 
     public ConfigWindow(Plugin plugin)
-        : base("WheelEmote Settings###WheelEmoteConfig")
+        : base("Action Wheel###ActionWheelConfig")
     {
-        Flags = ImGuiWindowFlags.NoCollapse;
 
         Size = new Vector2(570, 640);
         SizeCondition = ImGuiCond.FirstUseEver;
@@ -173,7 +172,6 @@ public class ConfigWindow : Window, IDisposable
 
         var slots = plugin.ActiveCharConfig.WheelEmoteIds;
 
-        // Pages needed to contain all existing slots (minimum 0, no auto-expansion)
         int usedPages   = slots.Count == 0 ? 0 : (slots.Count + WheelWindow.EmotesPerPage - 1) / WheelWindow.EmotesPerPage;
         int activePages = Math.Clamp(Math.Max(plugin.ActiveCharConfig.WheelPageCount, usedPages), 1, WheelWindow.MaxPages);
         int maxSlots    = activePages * WheelWindow.EmotesPerPage;
@@ -270,10 +268,9 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Separator();
         ImGui.Spacing();
 
-        // ── Wheel Pages ────────────────────────────────────────────────────
         ImGui.TextColored(new Vector4(1f, 0.8f, 0.4f, 1f), "Wheel Pages");
         ImGui.SameLine();
-        ImGui.TextDisabled("(slot 1 = center emote · click to remove · drag to reorder)");
+        ImGui.TextDisabled("(click to remove · drag to reorder)");
         ImGui.SameLine();
         ImGui.TextColored(new Vector4(1f, 0.65f, 0.2f, 0.9f), "■");
         if (ImGui.IsItemHovered())
@@ -311,9 +308,15 @@ public class ConfigWindow : Window, IDisposable
 
         DrawWheelPreviews(slots, maxSlots, activePages, plugin.ActiveCharConfig, configuration.WheelColor, configuration.WheelHoverColor, configuration.WheelTextColor);
 
-        // Reset drag state when no drag is active
         if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
         {
+            // Drag ended without landing on any slot → remove the emote (drag-out-to-remove).
+            if (_slotDragSrc >= 0 && _slotDragSrc < slots.Count)
+            {
+                slots[_slotDragSrc] = 0;
+                TrimTrailingZeros(slots);
+                configuration.Save();
+            }
             _slotDragSrc = -1;
             _emoteDragId = 0;
         }
@@ -322,8 +325,13 @@ public class ConfigWindow : Window, IDisposable
         ImGui.Separator();
         ImGui.Spacing();
 
-        // ── Available Emotes ─────────────────────────────────────────────
-        ImGui.TextColored(new Vector4(1f, 0.8f, 0.4f, 1f), "Available Emotes");
+        ImGui.PushStyleColor(ImGuiCol.Header,        new Vector4(0.18f, 0.28f, 0.38f, 0.9f));
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, new Vector4(0.25f, 0.38f, 0.52f, 1f));
+        bool showEmotes = ImGui.CollapsingHeader("Available Emotes##emotepanel", ImGuiTreeNodeFlags.DefaultOpen);
+        ImGui.PopStyleColor(2);
+
+        if (showEmotes)
+        {
 
         ImGui.InputText("##emotesearch", ref emoteSearch, 64);
         if (string.IsNullOrEmpty(emoteSearch) && !ImGui.IsItemActive())
@@ -332,10 +340,15 @@ public class ConfigWindow : Window, IDisposable
             var pos      = ImGui.GetItemRectMin() + new Vector2(5, (ImGui.GetItemRectSize().Y - ImGui.GetTextLineHeight()) / 2f);
             dl.AddText(pos, ImGui.ColorConvertFloat4ToU32(new Vector4(0.5f, 0.5f, 0.5f, 1f)), "Search...");
         }
+        if (!string.IsNullOrEmpty(emoteSearch))
+        {
+            ImGui.SameLine();
+            if (ImGui.SmallButton("✕##clearsearch"))
+                emoteSearch = string.Empty;
+        }
 
         cachedEmotes ??= plugin.EmoteService.GetOwnedEmotes();
 
-        // Build ordered category tabs (General → Special → Expressions → others)
         var preferredOrder = new[] { "General", "Special", "Expressions" };
         var categories = cachedEmotes
             .Select(e => e.Category)
@@ -346,9 +359,19 @@ public class ConfigWindow : Window, IDisposable
 
         if (ImGui.BeginTabBar("##emotetabs"))
         {
-            // ── Favorites tab ──────────────────────────────────────────────
             if (ImGui.BeginTabItem("★ Favorites##favtab"))
             {
+                if (ImGui.SmallButton("Sync from game favorites##importgamefavs"))
+                {
+                    int added = plugin.ImportGameFavorites();
+                    if (added > 0) cachedEmotes = plugin.EmoteService.GetOwnedEmotes(); // refresh
+                }
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Import emotes you have starred in the in-game Emote List into plugin favorites.\nAlready-favorited emotes are kept.");
+                ImGui.SameLine();
+                ImGui.TextDisabled($"({plugin.ActiveCharConfig.FavoriteEmotes?.Count ?? 0} favorited)");
+                ImGui.Spacing();
+
                 var favEmotes = cachedEmotes
                     .Where(e => plugin.ActiveCharConfig.FavoriteEmotes?.Contains(e.RowId) == true)
                     .Where(e => string.IsNullOrWhiteSpace(emoteSearch) ||
@@ -358,7 +381,16 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.EndTabItem();
             }
 
-            // ── Category tabs ──────────────────────────────────────────────
+            if (ImGui.BeginTabItem("All##alltab"))
+            {
+                var allEmotes = cachedEmotes
+                    .Where(e => string.IsNullOrWhiteSpace(emoteSearch) ||
+                                e.Name.Contains(emoteSearch, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                DrawEmoteList(allEmotes, slots, maxSlots);
+                ImGui.EndTabItem();
+            }
+
             foreach (var cat in categories)
             {
                 if (ImGui.BeginTabItem($"{cat}##tab_{cat}"))
@@ -373,7 +405,6 @@ public class ConfigWindow : Window, IDisposable
                 }
             }
 
-            // ── Macros tab ────────────────────────────────────────────────────
             if (ImGui.BeginTabItem("Macros##macrostab"))
             {
                 ImGui.TextDisabled("Macros are read from your in-game macro slots. /wait lines are not supported.");
@@ -414,6 +445,8 @@ public class ConfigWindow : Window, IDisposable
 
             ImGui.EndTabBar();
         }
+
+        } // end showEmotes
     }
 
     private void DrawEmoteList(List<EmoteInfo> emotes, List<uint> slots, int maxSlots)
@@ -436,7 +469,6 @@ public class ConfigWindow : Window, IDisposable
             bool showsLog = plugin.ActiveCharConfig.ChatLogEmotes?.Contains(emote.RowId) == true;
             bool isFav    = plugin.ActiveCharConfig.FavoriteEmotes?.Contains(emote.RowId) == true;
 
-            // ── Favourite star button ──────────────────────────────────────
             ImGui.PushID($"fav_{emote.RowId}");
             ImGui.PushStyleColor(ImGuiCol.Button,        isFav ? new Vector4(0.8f,  0.7f,  0.1f,  1f) : new Vector4(0.2f, 0.2f, 0.2f, 0.5f));
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, isFav ? new Vector4(0.9f,  0.8f,  0.15f, 1f) : new Vector4(0.3f, 0.3f, 0.3f, 0.7f));
@@ -453,7 +485,6 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SetTooltip(isFav ? "Remove from favorites" : "Add to favorites");
             ImGui.SameLine();
 
-            // ── Chat-log toggle button ─────────────────────────────────────
             ImGui.PushID($"mo_{emote.RowId}");
             ImGui.PushStyleColor(ImGuiCol.Button,        showsLog ? new Vector4(0.75f, 0.4f,  0.1f,  1f) : new Vector4(0.2f, 0.2f, 0.2f, 0.5f));
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, showsLog ? new Vector4(0.9f,  0.5f,  0.15f, 1f) : new Vector4(0.3f, 0.3f, 0.3f, 0.7f));
@@ -472,7 +503,6 @@ public class ConfigWindow : Window, IDisposable
                     : "Silent (motion only) · Click to enable chat log message");
             ImGui.SameLine();
 
-            // ── Icon ───────────────────────────────────────────────────────
             var tex = Plugin.GetIcon(emote.IconId);
             if (tex != null)
             {
@@ -480,7 +510,6 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.SameLine();
             }
 
-            // ── Name selectable ────────────────────────────────────────────
             if (inWheel)
                 ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.4f, 0.9f, 0.4f, 1f));
 
@@ -490,7 +519,6 @@ public class ConfigWindow : Window, IDisposable
             if (inWheel)
                 ImGui.PopStyleColor();
 
-            // Drag source
             if (ImGui.BeginDragDropSource(ImGuiDragDropFlags.None))
             {
                 _emoteDragId = emote.RowId;
@@ -545,7 +573,10 @@ public class ConfigWindow : Window, IDisposable
         var  dl    = ImGui.GetWindowDrawList();
         var  mouse = ImGui.GetMousePos();
 
-        const int WheelsPerRow = 3;
+        // Responsive: fit as many wheels per row as the available content width allows.
+        // Each wheel is CanvasW wide with 20px gap between columns (plus 8px left indent).
+        float availW = ImGui.GetContentRegionAvail().X;
+        int WheelsPerRow = Math.Max(1, (int)((availW + 20f) / (CanvasW + 20f)));
 
         for (int page = 0; page < pageCount; page++)
         {
@@ -555,10 +586,8 @@ public class ConfigWindow : Window, IDisposable
             ImGui.PushID(page);
             ImGui.BeginGroup();
 
-            // Capture group top for border drawing
             var groupTopPos = ImGui.GetCursorScreenPos();
 
-            // Editable page name — narrower and centred within the canvas
             const float NameInputW = 120f;
             var pageName = page < charCfg.PageNames.Count ? charCfg.PageNames[page] : string.Empty;
             ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (CanvasW - NameInputW) / 2f);
@@ -573,12 +602,10 @@ public class ConfigWindow : Window, IDisposable
             var canvasSz  = new Vector2(CanvasW, CanvasW);
             var center    = canvasPos + new Vector2(CanvasR, CanvasR);
 
-            // Reserve canvas space so BeginGroup tracks the right bounding box
             ImGui.Dummy(canvasSz);
 
             int baseSlot = page * WheelWindow.EmotesPerPage;
 
-            // ── Mouse hover detection for visual highlighting ───────────
             var   delta    = mouse - center;
             float dist     = delta.Length();
             var   mouseRel = mouse - canvasPos;
@@ -601,10 +628,8 @@ public class ConfigWindow : Window, IDisposable
                 }
             }
 
-            // ── Shadow ─────────────────────────────────────────────────
             dl.AddCircleFilled(center, OuterR + 6f, WheelCol(0, 0, 0, 110), 64);
 
-            // ── Ring segments ───────────────────────────────────────────
             for (int i = 0; i < RingCount; i++)
             {
                 bool  hov  = i == hovRing;
@@ -656,7 +681,6 @@ public class ConfigWindow : Window, IDisposable
                 }
             }
 
-            // ── Center circle ───────────────────────────────────────────
             uint cFill = hovCen ? WheelCol(220, 160, 20, 230) : WheelCol(15, 20, 25, 230);
             dl.AddCircleFilled(center, InnerR, cFill, 32);
             dl.AddCircle(center, InnerR,        WheelCol(80, 110, 140, 200), 32, 1.5f);
@@ -693,7 +717,6 @@ public class ConfigWindow : Window, IDisposable
                 dl.AddText(center - lsz / 2f, WheelCol(80, 100, 120, 130), lbl);
             }
 
-            // ── Overlay interaction buttons (one per slot) ──────────────
             for (int s = 0; s < WheelWindow.EmotesPerPage; s++)
             {
                 int     slotIdx   = baseSlot + s;
@@ -715,7 +738,7 @@ public class ConfigWindow : Window, IDisposable
                 {
                     string slotLabel = $"Slot {s + 1}{(s == 0 ? " (center)" : "")}";
                     ImGui.SetTooltip(segEmote != null
-                        ? $"{slotLabel}: {segEmote.Name}\nClick to remove · Drag to reorder"
+                        ? $"{slotLabel}: {segEmote.Name}\nClick to remove · Drag to reorder · Drag outside wheel to remove"
                         : $"{slotLabel}: Empty — drop an emote here");
                 }
 
@@ -751,12 +774,10 @@ public class ConfigWindow : Window, IDisposable
                             slots[slotIdx] = emoteId;
                             TrimTrailingZeros(slots);
                             configuration.Save();
-                            _slotDragSrc = -1;
                         }
                         else if (_emoteDragId != 0)
                         {
                             uint eid = _emoteDragId;
-                            _emoteDragId = 0;
                             EnsureSlotCount(slots, slotIdx + 1);
                             int existingIdx = slots.IndexOf(eid);
                             if (existingIdx >= 0) slots[existingIdx] = 0; // vacate old position
@@ -764,6 +785,10 @@ public class ConfigWindow : Window, IDisposable
                             TrimTrailingZeros(slots);
                             configuration.Save();
                         }
+                        // Always clear drag state when mouse released over any drop target
+                        // so that dropping back onto the same slot doesn't trigger removal.
+                        _slotDragSrc = -1;
+                        _emoteDragId = 0;
                     }
 
                     ImGui.EndDragDropTarget();
@@ -816,7 +841,6 @@ public class ConfigWindow : Window, IDisposable
             }
             ImGui.SameLine(0f, Compact);
 
-            // Hover colour swatch
             var hovColVal = charCfg.GetPageHoverColor(page) ?? globalHoverColor;
             if (ImGui.ColorEdit4($"##pagehovercolor{page}", ref hovColVal,
                 ImGuiColorEditFlags.NoInputs | ImGuiColorEditFlags.AlphaBar | ImGuiColorEditFlags.NoLabel))
@@ -894,7 +918,6 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.EndPopup();
             }
 
-            // Subtle border around the whole wheel group
             float borderBot_ = row2Y_ + swatchW_ + 6f;
             dl.AddRect(
                 groupTopPos - new Vector2(6f, 3f),
@@ -906,7 +929,6 @@ public class ConfigWindow : Window, IDisposable
             ImGui.EndGroup();
             ImGui.PopID();
 
-            // Extra vertical gap between rows
             if (col == WheelsPerRow - 1 && page < pageCount - 1)
                 ImGui.Dummy(new Vector2(0f, 10f));
         }

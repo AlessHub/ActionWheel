@@ -12,7 +12,7 @@
   "RepoUrl": "https://github.com/AlessHub/ActionWheel",
   "ApplicableVersion": "any",
   "DalamudApiLevel": 15,
-  "IconUrl": "",
+  "IconUrl": "https://raw.githubusercontent.com/AlessHub/ActionWheel/main/ActionWheel/icon.png",
   "ImageUrls": [],
   "AssemblyVersion": "0.1.0.0",
   "IsHide": false,

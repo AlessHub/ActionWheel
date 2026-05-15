@@ -19,6 +19,11 @@ A [Dalamud](https://github.com/goatcorp/Dalamud) plugin for Final Fantasy XIV th
 3. Add emote pages and assign emotes to slots
 4. In game, hold the toggle key — the wheel appears. Hover a segment and release to use that emote
 
+## Disclaimer
+
+This plugin has been made with AI, vibe-coding, copilot, however you want to name it. I have written some of the code but mostly it's AI written.
+I have however led all of the decisions and read everything personally, made logs to check outputs and outcomes and overall "built" the plugin. I understand what it does and how it does it.
+
 
 ## License
 
